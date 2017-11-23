@@ -46,40 +46,45 @@ function generate (_argv) {
     `${chalk.dim('[2/4]')} 💎  Generating the Sketch headers...`
   )
 
-  function parseHeaders(input, output) {
-    const files = fs.readdirSync(input);
-    const classes = {}
-    files.forEach(file => {
-      let data = fs.readFileSync(
-        path.join(input, file),
-        'utf8'
-      );
-      if (data) {
-        data = parseHeader(data)
-        if (!data.className) {
-          console.log(
-            `${chalk.yellow('Warning')} Something weird with ${input}/${file}, do something about it!`
-          )
-          return
-        }
-
-        if (classes[data.className]) { // merge
-          data.imports.forEach(i => classes[data.className].imports.add(i))
-          Array.from(data.classes).forEach(c => classes[data.className].classes.add(c))
-          if (!classes[data.className].extends) {
-            classes[data.className].extends = data.extends
+  function parseHeaders(inputs, output) {
+    if (!Array.isArray(inputs)) {
+      inputs = [ inputs ];
+    }
+    const classes = {}    
+    inputs.forEach(input => {
+      const files = fs.readdirSync(input);
+      files.forEach(file => {
+        let data = fs.readFileSync(
+          path.join(input, file),
+          'utf8'
+        );
+        if (data) {
+          data = parseHeader(data)
+          if (!data.className) {
+            console.log(
+              `${chalk.yellow('Warning')} Something weird with ${input}/${file}, do something about it!`
+            )
+            return
           }
-          Array.from(data.interfaces).forEach(i => classes[data.className].interfaces.add(i))
-          Object.keys(data.methods).forEach(k => {
-            classes[data.className].methods[k] = data.methods[k]
-          })
-          Object.keys(data.properties).forEach(k => {
-            classes[data.className].properties[k] = data.properties[k]
-          })
-        } else {
-          classes[data.className] = data
+  
+          if (classes[data.className]) { // merge
+            data.imports.forEach(i => classes[data.className].imports.add(i))
+            Array.from(data.classes).forEach(c => classes[data.className].classes.add(c))
+            if (!classes[data.className].extends) {
+              classes[data.className].extends = data.extends
+            }
+            Array.from(data.interfaces).forEach(i => classes[data.className].interfaces.add(i))
+            Object.keys(data.methods).forEach(k => {
+              classes[data.className].methods[k] = data.methods[k]
+            })
+            Object.keys(data.properties).forEach(k => {
+              classes[data.className].properties[k] = data.properties[k]
+            })
+          } else {
+            classes[data.className] = data
+          }
         }
-      }
+      });
     });
     fs.ensureDirSync(output)
     Object.keys(classes).forEach(c => {
@@ -113,7 +118,10 @@ function generate (_argv) {
         `${chalk.dim('[4/4]')} 🗂  Generating the parsed documentation...`
       )
       parseHeaders(`${HEADERS}/sketch`, DOCS)
-      parseHeaders(`${HEADERS}/macos`, MACOS_DOCS)
+      parseHeaders([`${HEADERS}/macos`,
+        `${MACOS_SDK}/AppKit.framework/Headers`, 
+        `${MACOS_SDK}/Foundation.framework/Headers`,
+      ], MACOS_DOCS);
     })
     .then(() => {
       try {
